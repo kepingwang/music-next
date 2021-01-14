@@ -18,10 +18,6 @@ repositories {
     mavenCentral()
 }
 
-bootRun {
-    jvmArgs = ["-Xms480m", "-Xmx480m"]
-}
-
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.13'
