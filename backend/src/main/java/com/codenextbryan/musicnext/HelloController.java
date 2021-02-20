@@ -2,6 +2,8 @@ package com.codenextbryan.musicnext;
 
 // Following https://spring.io/guides/gs/spring-boot/
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.Consts;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -12,6 +14,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
+@CrossOrigin
 @RestController
 public class HelloController {
 
@@ -39,21 +43,48 @@ public class HelloController {
     @RequestMapping("/api/spotify/{artistId}")
     public String spotify(@PathVariable(value = "artistId") String artistId) throws Exception {
         CloseableHttpClient client = HttpClientBuilder.create().build();
-
+        ObjectMapper mapper = new ObjectMapper();
         List<NameValuePair> form = new ArrayList<>();
         form.add(new BasicNameValuePair("grant_type", "client_credentials"));
         UrlEncodedFormEntity tokenEntity = new UrlEncodedFormEntity(form, Consts.UTF_8);
 
         HttpPost httpPost = new HttpPost("https://accounts.spotify.com/api/token");
         httpPost.setEntity(tokenEntity);
-        String encodedAuth = Base64.getEncoder().encodeToString("".getBytes());
+        String encodedAuth = Base64.getEncoder().encodeToString("baa38c5b71254ff0bae35b28e10e37bc:68a5057dc92944299f17ad83454d5183".getBytes());
         httpPost.addHeader("Authorization", "Basic " + encodedAuth);
-
-//        HttpGet request = new HttpGet("https://api.spotify.com/v1/artists/" + artistId);
-//        HttpResponse response = client.execute(request);
-
         HttpResponse response = client.execute(httpPost);
-        return EntityUtils.toString(response.getEntity());
+
+        JsonNode responseJson = mapper.readTree(EntityUtils.toString(response.getEntity()));
+        String accessToken = responseJson.get("access_token").textValue();
+
+        HttpGet httpGet = new HttpGet("https://api.spotify.com/v1/artists/" + artistId);
+        httpGet.addHeader("Authorization", "Bearer " + accessToken);
+        HttpResponse response2 = client.execute(httpGet);
+
+        return EntityUtils.toString(response2.getEntity());
     }
 
+    @RequestMapping("/search/{searchQuery}")
+    public String search(@PathVariable(value = "searchQuery") String searchQuery) throws Exception {
+        CloseableHttpClient client = HttpClientBuilder.create().build();
+        ObjectMapper mapper = new ObjectMapper();
+        List <NameValuePair> form = new ArrayList<>();
+        form.add(new BasicNameValuePair("grant_type","client_credentials"));
+        UrlEncodedFormEntity tokenEntity = new UrlEncodedFormEntity(form, Consts.UTF_8);
+
+        HttpPost httpPost = new HttpPost("https://accounts.spotify.com/api/token");
+        httpPost.setEntity(tokenEntity);
+        String encodedAuth = Base64.getEncoder().encodeToString("baa38c5b71254ff0bae35b28e10e37bc:68a5057dc92944299f17ad83454d5183".getBytes());
+        httpPost.addHeader("Authorization", "Basic " + encodedAuth);
+        HttpResponse response = client.execute(httpPost);
+
+        JsonNode responseJson = mapper.readTree(EntityUtils.toString(response.getEntity()));
+        String accessToken = responseJson.get("access_token").textValue();
+        searchQuery = searchQuery.replaceAll(" ","&20");
+        HttpGet httpGet = new HttpGet("https://api.spotify.com/v1/search?q=" + searchQuery + "&type=track");
+        httpGet.addHeader("Authorization", "Bearer " + accessToken);
+        HttpResponse response2 = client.execute(httpGet);
+
+        return EntityUtils.toString(response2.getEntity());
+    }
 }
